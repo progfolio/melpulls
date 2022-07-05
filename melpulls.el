@@ -29,6 +29,7 @@
 
 ;;; Code:
 (require 'url)
+(require 'button)
 (require 'cl-lib)
 (require 'elpaca)
 
@@ -79,17 +80,31 @@
         (setq recipe (plist-put recipe :files '(:defaults))))
       recipe)))
 
+(defvar melpulls--summary-regexp
+  "\\(?:[^z-a]*?### Brief summary[^z-a]*?\n\\([^z-a]*\\)### Direct link\\)"
+  "Regexp for pull request summary heading.")
+(defvar melpulls--markdown-link-regexp "\\(?:\\[\\([^z-a]*?\\)](\\([^z-a]*?\\))\\)")
+
+(defun melpulls--md-links-to-buttons (string)
+  "Convert STRING's markdown links to buttons."
+  (replace-regexp-in-string
+   melpulls--markdown-link-regexp
+   (lambda (match)
+     (let* ((data (match-data t))
+            (description (substring match (nth 2 data) (nth 3 data)))
+            (target (substring match (nth 4 data) (nth 5 data))))
+       (buttonize description (lambda (_) (browse-url target)))))
+   string))
+
 (defun melpulls--item-description (pull)
   "Return first sentence of PULL's description or nil if unparsable."
-  (ignore-errors
-    (replace-regexp-in-string "\\(?:\\[\\([^z-a]*?\\)]([^z-a]*?)\\)" ;;markdown links
-                              "\\1"
-                              (car (split-string
-                                    (car (split-string
-                                          (car (split-string (alist-get 'body pull)
-                                                             "###.*$" 'omit-nulls "[[:space:]]"))
-                                          "\r?\n" 'omit-nulls "\\(?:[[:space:]]*\\)"))
-                                    "\\. ? " 'omit-nulls)))))
+  (when-let ((body (alist-get 'body pull))
+             (summary (replace-regexp-in-string melpulls--summary-regexp "\\1" body)))
+    (cl-some (lambda (line)
+               (when-let ((trimmed (string-trim line))
+                          ((> (length trimmed) 0)))
+                 trimmed))
+             (split-string summary "\r\n" 'omit-nulls "[[:space:]]"))))
 
 (defun melpulls--item-url (recipe pull)
   "Return URL for RECIPE or PULL URL if none found."
@@ -115,9 +130,13 @@ If REFRESH is non-nil, recompute the cache."
                          for recipe = (melpulls--recipe diff)
                          when recipe collect
                          (list (intern (plist-get recipe :package))
-                               :source      "MELPA Pulls"
+                               :source      (buttonize
+                                             "MELPA Pulls"
+                                             (lambda (_) (browse-url
+                                                          "https://www.github.com/melpa/melpa/pulls")))
                                :date        (ignore-errors (date-to-time (alist-get 'created_at pull)))
-                               :description (melpulls--item-description pull)
+                               :description (melpulls--md-links-to-buttons
+                                             (melpulls--item-description pull))
                                :url         (melpulls--item-url recipe pull)
                                :recipe      recipe)))
         (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
