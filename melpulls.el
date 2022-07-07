@@ -81,7 +81,7 @@
       recipe)))
 
 (defvar melpulls--summary-regexp
-  "\\(?:[^z-a]*?### Brief summary[^z-a]*?\n\\([^z-a]*\\)### Direct link\\)"
+  "\\(?:[^z-a]*?### Brief summary[^z-a]*?[\n]+?\\([^z-a]*?\\)###[^z-a]*\\)"
   "Regexp for pull request summary heading.")
 (defvar melpulls--markdown-link-regexp "\\(?:\\[\\([^z-a]*?\\)](\\([^z-a]*?\\))\\)")
 
