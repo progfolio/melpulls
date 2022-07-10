@@ -124,10 +124,9 @@ If REFRESH is non-nil, recompute the cache."
           (message "Updating Melpulls menu.")
           (setq melpulls--cache
                 (cl-loop for pull in (melpulls--json)
-                         for url    = (alist-get 'diff_url pull)
-                         when url
-                         for diff   = (melpulls--diff-url url)
-                         for recipe = (melpulls--recipe diff)
+                         for recipe = (when-let ((url (alist-get 'diff_url pull))
+                                                 (diff (melpulls--diff-url url)))
+                                        (melpulls--recipe diff))
                          when recipe collect
                          (list (intern (plist-get recipe :package))
                                :source      (buttonize
