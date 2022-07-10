@@ -116,6 +116,10 @@
                 fetcher (plist-get recipe :repo))
       (alist-get 'html_url pull))))
 
+(defun melpulls--visit-source (_)
+  "Visit MELPA pull requests page."
+  (browse-url "https://www.github.com/melpa/melpa/pulls"))
+
 (defun melpulls--items (&optional refresh)
   "Return list of menu items.
 If REFRESH is non-nil, recompute the cache."
@@ -129,10 +133,7 @@ If REFRESH is non-nil, recompute the cache."
                                         (melpulls--recipe diff))
                          when recipe collect
                          (list (intern (plist-get recipe :package))
-                               :source      (buttonize
-                                             "MELPA Pulls"
-                                             (lambda (_) (browse-url
-                                                          "https://www.github.com/melpa/melpa/pulls")))
+                               :source      (buttonize "MELPA Pulls" #'melpulls--visit-source)
                                :date        (ignore-errors (date-to-time (alist-get 'created_at pull)))
                                :description (melpulls--md-links-to-buttons
                                              (melpulls--item-description pull))
