@@ -85,16 +85,16 @@
   "Regexp for pull request summary heading.")
 (defvar melpulls--markdown-link-regexp "\\(?:\\[\\([^z-a]*?\\)](\\([^z-a]*?\\))\\)")
 
+(defun melpulls--md-link-to-button (match)
+  "Return button from MATCH."
+    (let* ((data (match-data t))
+           (description (substring match (nth 2 data) (nth 3 data)))
+           (target (substring match (nth 4 data) (nth 5 data))))
+      (buttonize description (lambda (_) (browse-url target)) nil target)))
+
 (defun melpulls--md-links-to-buttons (string)
   "Convert STRING's markdown links to buttons."
-  (replace-regexp-in-string
-   melpulls--markdown-link-regexp
-   (lambda (match)
-     (let* ((data (match-data t))
-            (description (substring match (nth 2 data) (nth 3 data)))
-            (target (substring match (nth 4 data) (nth 5 data))))
-       (buttonize description (lambda (_) (browse-url target)))))
-   string))
+  (replace-regexp-in-string melpulls--markdown-link-regexp #'melpulls--md-link-to-button string))
 
 (defun melpulls--item-description (pull)
   "Return first sentence of PULL's description or nil if unparsable."
@@ -133,7 +133,9 @@ If REFRESH is non-nil, recompute the cache."
                                         (melpulls--recipe diff))
                          when recipe collect
                          (list (intern (plist-get recipe :package))
-                               :source      (buttonize "MELPA Pulls" #'melpulls--visit-source)
+                               :source      (buttonize "MELPA Pulls" #'melpulls--visit-source
+                                                       nil
+                                                       "https://www.github.com/melpa/melpa/pulls")
                                :date        (ignore-errors (date-to-time (alist-get 'created_at pull)))
                                :description (melpulls--md-links-to-buttons
                                              (melpulls--item-description pull))
