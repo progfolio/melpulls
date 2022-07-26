@@ -52,7 +52,7 @@
 (defun melpulls--json ()
   "Return list of pulls from github's API."
   (let ((url-mime-accept-string melpulls-accept-string))
-    (with-current-buffer (url-retrieve-synchronously melpulls-url)
+    (with-current-buffer (url-retrieve-synchronously melpulls-url 'silent)
       (json-parse-string
        (decode-coding-region url-http-end-of-headers (point-max) 'utf-8 t)
        :array-type 'list :object-type 'alist))))
@@ -63,7 +63,7 @@
 
 (defun melpulls--recipe (diff)
   "Return DIFF url's recipe or nil if unparsable."
-  (with-current-buffer (url-retrieve-synchronously diff)
+  (with-current-buffer (url-retrieve-synchronously diff 'silent)
     (re-search-backward "@@" nil 'noerror)
     (forward-line)
     (narrow-to-region (point) (point-max))
