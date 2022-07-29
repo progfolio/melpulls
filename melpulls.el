@@ -49,6 +49,10 @@
 (defvar melpulls-accept-string "application/vnd.github.v3+json")
 (defvar melpulls--cache (elpaca--read-file melpulls-cache-file) "Cache for items.")
 
+(defalias 'melpulls--buttonize
+  (with-no-warnings
+    (if (version< emacs-version "29.1") #'button-buttonize #'buttonize)))
+
 (defun melpulls--json ()
   "Return list of pulls from github's API."
   (let ((url-mime-accept-string melpulls-accept-string))
@@ -87,10 +91,10 @@
 
 (defun melpulls--md-link-to-button (match)
   "Return button from MATCH."
-    (let* ((data (match-data t))
-           (description (substring match (nth 2 data) (nth 3 data)))
-           (target (substring match (nth 4 data) (nth 5 data))))
-      (buttonize description (lambda (_) (browse-url target)) nil target)))
+  (let* ((data (match-data t))
+         (description (substring match (nth 2 data) (nth 3 data)))
+         (target (substring match (nth 4 data) (nth 5 data))))
+    (melpulls--buttonize description #'browse-url target target)))
 
 (defun melpulls--md-links-to-buttons (string)
   "Convert STRING's markdown links to buttons."
@@ -116,10 +120,6 @@
                 fetcher (plist-get recipe :repo))
       (alist-get 'html_url pull))))
 
-(defun melpulls--visit-source (_)
-  "Visit MELPA pull requests page."
-  (browse-url "https://www.github.com/melpa/melpa/pulls"))
-
 (defun melpulls--items (&optional refresh)
   "Return list of menu items.
 If REFRESH is non-nil, recompute the cache."
@@ -127,20 +127,27 @@ If REFRESH is non-nil, recompute the cache."
       (prog2
           (message "Updating Melpulls menu.")
           (setq melpulls--cache
-                (cl-loop for pull in (melpulls--json)
-                         for recipe = (when-let ((url (alist-get 'diff_url pull))
-                                                 (diff (melpulls--diff-url url)))
-                                        (melpulls--recipe diff))
-                         when recipe collect
-                         (list (intern (plist-get recipe :package))
-                               :source      (buttonize "MELPA Pulls" #'melpulls--visit-source
-                                                       nil
-                                                       "https://www.github.com/melpa/melpa/pulls")
-                               :date        (ignore-errors (date-to-time (alist-get 'created_at pull)))
-                               :description (melpulls--md-links-to-buttons
-                                             (melpulls--item-description pull))
-                               :url         (melpulls--item-url recipe pull)
-                               :recipe      recipe)))
+                (cl-loop
+                 for pull in (melpulls--json)
+                 for recipe = (when-let ((url (alist-get 'diff_url pull))
+                                         (diff (melpulls--diff-url url)))
+                                (melpulls--recipe diff))
+                 for issue = (alist-get 'issue_url pull)
+                 when recipe collect
+                 (list (intern (plist-get recipe :package))
+                       :source "MELPA Pulls"
+                       :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
+                       :description
+                       (concat (when issue
+                                 (setq issue (replace-regexp-in-string "api" "www" issue))
+                                 (setq issue (replace-regexp-in-string "repos/" "" issue))
+                                 (melpulls--buttonize (file-name-base issue)
+                                                      #'browse-url issue issue))
+                               (when issue " ")
+                               (melpulls--md-links-to-buttons
+                                (melpulls--item-description pull)))
+                       :url         (melpulls--item-url recipe pull)
+                       :recipe      recipe)))
         (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
         (message "Melpulls menu updated."))))
 
