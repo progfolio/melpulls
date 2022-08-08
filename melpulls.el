@@ -68,6 +68,8 @@
 (defun melpulls--recipe (diff)
   "Return DIFF url's recipe or nil if unparsable."
   (with-current-buffer (url-retrieve-synchronously diff 'silent)
+    (narrow-to-region url-http-end-of-headers (point-max))
+    (goto-char (point-max))
     (re-search-backward "@@" nil 'noerror)
     (forward-line)
     (narrow-to-region (point) (point-max))
