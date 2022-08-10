@@ -44,6 +44,10 @@
   "Name of the melpulls cache file."
   :type 'path)
 
+(defcustom melpulls-poll-timeout 60 "Number of seconds to poll for recipes before timing out."
+  :group 'melpulls
+  :type  'number)
+
 (defvar melpulls-url "https://api.github.com/repos/melpa/melpa/pulls"
   "Pull request end point for github's API.")
 (defvar melpulls-accept-string "application/vnd.github.v3+json")
@@ -65,26 +69,25 @@
   "Convert pull URL to diff URL."
   (replace-regexp-in-string "github\\.com" "patch-diff.githubusercontent.com/raw" url))
 
-(defun melpulls--recipe (diff)
-  "Return DIFF url's recipe or nil if unparsable."
-  (with-current-buffer (url-retrieve-synchronously diff 'silent)
-    (narrow-to-region url-http-end-of-headers (point-max))
-    (goto-char (point-max))
-    (re-search-backward "@@" nil 'noerror)
-    (forward-line)
-    (narrow-to-region (point) (point-max))
-    (flush-lines "^-")
-    (goto-char (point-min))
-    (while (re-search-forward "^\\+" nil 'noerror)
-      (replace-match ""))
-    (when-let ((recipe (ignore-errors (read (buffer-string))))
-               ((listp recipe))
-               (package (pop recipe))
-               ((member (plist-get recipe :fetcher) '(git github gitlab))))
-      (setq recipe (append (list :package (symbol-name package)) recipe))
-      (unless (plist-member recipe :files)
-        (setq recipe (plist-put recipe :files '(:defaults))))
-      recipe)))
+(defun melpulls--recipe ()
+  "Return diff's recipe or nil if unparsable."
+  (narrow-to-region url-http-end-of-headers (point-max))
+  (goto-char (point-max))
+  (re-search-backward "@@" nil 'noerror)
+  (forward-line)
+  (narrow-to-region (point) (point-max))
+  (flush-lines "^-")
+  (goto-char (point-min))
+  (while (re-search-forward "^\\+" nil 'noerror)
+    (replace-match ""))
+  (when-let ((recipe (ignore-errors (read (buffer-string))))
+             ((listp recipe))
+             (package (pop recipe))
+             ((member (plist-get recipe :fetcher) '(git github gitlab))))
+    (setq recipe (append (list :package (symbol-name package)) recipe))
+    (unless (plist-member recipe :files)
+      (setq recipe (plist-put recipe :files '(:defaults))))
+    recipe))
 
 (defvar melpulls--summary-regexp
   "\\(?:[^z-a]*?### Brief summary[^z-a]*?[\n]+?\\([^z-a]*?\\)###[^z-a]*\\)"
@@ -122,34 +125,49 @@
                 fetcher (plist-get recipe :repo))
       (alist-get 'html_url pull))))
 
+(defun melpulls--recipes ()
+  "Asynchronously parse recipes from pull request diff URLs."
+  (cl-loop
+   with completed
+   with requests = 0
+   for pull in (melpulls--json)
+   do (when-let ((url (alist-get 'diff_url pull))
+                 (diff (melpulls--diff-url url)))
+        (cl-incf requests)
+        (url-retrieve
+         diff
+         (lambda (_ pull)
+           (push
+            (when-let ((recipe (melpulls--recipe)))
+              (list (intern (plist-get recipe :package))
+                    :source "MELPA Pulls"
+                    :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
+                    :description
+                    (let ((issue (alist-get 'issue_url pull)))
+                      (concat (when issue
+                                (setq issue (replace-regexp-in-string "api" "www" issue))
+                                (setq issue (replace-regexp-in-string "repos/" "" issue))
+                                (melpulls--buttonize (file-name-base issue) #'browse-url issue issue))
+                              (when issue " ")
+                              (melpulls--md-links-to-buttons
+                               (melpulls--item-description pull))))
+                    :url (melpulls--item-url recipe pull)
+                    :recipe recipe))
+            completed))
+         (list pull) 'silent))
+   finally return (progn
+                    (with-timeout (melpulls-poll-timeout (message "Melpulls recipe fetching timed out"))
+                      (while (not (eq (length completed) requests))
+                        (sleep-for 0.001)))
+                    (nreverse (delq nil completed)))))
+
 (defun melpulls--items (&optional refresh)
   "Return list of menu items.
 If REFRESH is non-nil, recompute the cache."
   (or (and (not refresh) melpulls--cache)
       (prog2
           (message "Updating Melpulls menu.")
-          (setq melpulls--cache
-                (cl-loop
-                 for pull in (melpulls--json)
-                 for recipe = (when-let ((url (alist-get 'diff_url pull))
-                                         (diff (melpulls--diff-url url)))
-                                (melpulls--recipe diff))
-                 for issue = (alist-get 'issue_url pull)
-                 when recipe collect
-                 (list (intern (plist-get recipe :package))
-                       :source "MELPA Pulls"
-                       :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
-                       :description
-                       (concat (when issue
-                                 (setq issue (replace-regexp-in-string "api" "www" issue))
-                                 (setq issue (replace-regexp-in-string "repos/" "" issue))
-                                 (melpulls--buttonize (file-name-base issue)
-                                                      #'browse-url issue issue))
-                               (when issue " ")
-                               (melpulls--md-links-to-buttons
-                                (melpulls--item-description pull)))
-                       :url         (melpulls--item-url recipe pull)
-                       :recipe      recipe)))
+          (setq melpulls--cache (melpulls--recipes))
         (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
         (message "Melpulls menu updated."))))
 
