@@ -83,7 +83,7 @@
   (when-let ((recipe (ignore-errors (read (buffer-string))))
              ((listp recipe))
              (package (pop recipe))
-             ((member (plist-get recipe :fetcher) '(git github gitlab))))
+             ((member (plist-get recipe :fetcher) '(git github gitlab codeberg sourcehut))))
     (setq recipe (append (list :package (symbol-name package)) recipe))
     (unless (plist-member recipe :files)
       (setq recipe (plist-put recipe :files '(:defaults))))
