@@ -125,6 +125,24 @@
                 fetcher (plist-get recipe :repo))
       (alist-get 'html_url pull))))
 
+(defun melpulls--item (pull)
+  "Return a menu item from PULL."
+   (when-let ((recipe (melpulls--recipe)))
+     (list (intern (plist-get recipe :package))
+           :source "MELPA Pulls"
+           :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
+           :description
+           (let ((issue (alist-get 'issue_url pull)))
+             (concat (when issue
+                       (setq issue (replace-regexp-in-string "api" "www" issue))
+                       (setq issue (replace-regexp-in-string "repos/" "" issue))
+                       (melpulls--buttonize (file-name-base issue) #'browse-url issue issue))
+                     (when issue " ")
+                     (melpulls--md-links-to-buttons
+                      (melpulls--item-description pull))))
+           :url (melpulls--item-url recipe pull)
+           :recipe recipe)))
+
 (defun melpulls--recipes ()
   "Asynchronously parse recipes from pull request diff URLs."
   (cl-loop
@@ -134,27 +152,8 @@
    do (when-let ((url (alist-get 'diff_url pull))
                  (diff (melpulls--diff-url url)))
         (cl-incf requests)
-        (url-retrieve
-         diff
-         (lambda (_ pull)
-           (push
-            (when-let ((recipe (melpulls--recipe)))
-              (list (intern (plist-get recipe :package))
-                    :source "MELPA Pulls"
-                    :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
-                    :description
-                    (let ((issue (alist-get 'issue_url pull)))
-                      (concat (when issue
-                                (setq issue (replace-regexp-in-string "api" "www" issue))
-                                (setq issue (replace-regexp-in-string "repos/" "" issue))
-                                (melpulls--buttonize (file-name-base issue) #'browse-url issue issue))
-                              (when issue " ")
-                              (melpulls--md-links-to-buttons
-                               (melpulls--item-description pull))))
-                    :url (melpulls--item-url recipe pull)
-                    :recipe recipe))
-            completed))
-         (list pull) 'silent))
+        (url-retrieve diff (lambda (_status pull) (push (melpulls--item pull) completed))
+                      (list pull) 'silent))
    finally return (progn
                     (with-timeout (melpulls-poll-timeout
                                    (message "Melpulls recipe fetching timed out"))
