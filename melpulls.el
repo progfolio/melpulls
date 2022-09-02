@@ -156,7 +156,8 @@
             completed))
          (list pull) 'silent))
    finally return (progn
-                    (with-timeout (melpulls-poll-timeout (message "Melpulls recipe fetching timed out"))
+                    (with-timeout (melpulls-poll-timeout
+                                   (message "Melpulls recipe fetching timed out"))
                       (while (not (eq (length completed) requests))
                         (sleep-for 0.001)))
                     (nreverse (delq nil completed)))))
