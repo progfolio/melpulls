@@ -48,7 +48,7 @@
   :group 'melpulls
   :type  'number)
 
-(defvar melpulls-url "https://api.github.com/repos/melpa/melpa/pulls"
+(defvar melpulls-url "https://api.github.com/repos/melpa/melpa/pulls?per_page=100"
   "Pull request end point for github's API.")
 (defvar melpulls-accept-string "application/vnd.github.v3+json")
 (defvar melpulls--cache (elpaca--read-file melpulls-cache-file) "Cache for items.")
