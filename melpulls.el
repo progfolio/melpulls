@@ -76,7 +76,8 @@
   (re-search-backward "@@" nil 'noerror)
   (forward-line)
   (narrow-to-region (point) (point-max))
-  (flush-lines "^-")
+  ;; lines removed in diff and/or comments e.g. "\\ No newline at end of file"
+  (flush-lines "^\\(?:-\\|\\\\\\)")
   (goto-char (point-min))
   (while (re-search-forward "^\\+" nil 'noerror)
     (replace-match ""))
