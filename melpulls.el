@@ -143,12 +143,12 @@
            :url (melpulls--item-url recipe pull)
            :recipe recipe)))
 
-(defun melpulls--recipes ()
-  "Asynchronously parse recipes from pull request diff URLs."
+(defun melpulls--recipes (pulls)
+  "Asynchronously parse recipes from PULLS JSON."
   (cl-loop
    with completed
    with requests = 0
-   for pull in (melpulls--json)
+   for pull in pulls
    do (when-let ((url (alist-get 'diff_url pull))
                  (diff (melpulls--diff-url url)))
         (cl-incf requests)
@@ -167,7 +167,7 @@ If REFRESH is non-nil, recompute the cache."
   (or (and (not refresh) melpulls--cache)
       (prog2
           (message "Updating Melpulls menu.")
-          (setq melpulls--cache (melpulls--recipes))
+          (setq melpulls--cache (melpulls--recipes (melpulls--json)))
         (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
         (message "Melpulls menu updated."))))
 
