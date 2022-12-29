@@ -109,6 +109,9 @@
 (defun melpulls--item-description (pull)
   "Return first sentence of PULL's description or nil if unparsable."
   (when-let ((body (alist-get 'body pull))
+             ((setq body (replace-regexp-in-string
+                          "\\[Please write a quick summary of the package\\.\\]"
+                          "" body nil 'literal)))
              (summary (replace-regexp-in-string melpulls--summary-regexp "\\1" body)))
     (cl-some (lambda (line)
                (when-let ((trimmed (string-trim line))
@@ -128,21 +131,21 @@
 
 (defun melpulls--item (pull)
   "Return a menu item from PULL."
-   (when-let ((recipe (melpulls--recipe)))
-     (list (intern (plist-get recipe :package))
-           :source "MELPA Pulls"
-           :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
-           :description
-           (let ((issue (alist-get 'issue_url pull)))
-             (concat (when issue
-                       (setq issue (replace-regexp-in-string "api" "www" issue))
-                       (setq issue (replace-regexp-in-string "repos/" "" issue))
-                       (melpulls--buttonize (file-name-base issue) #'browse-url issue issue))
-                     (when issue " ")
-                     (melpulls--md-links-to-buttons
-                      (melpulls--item-description pull))))
-           :url (melpulls--item-url recipe pull)
-           :recipe recipe)))
+  (when-let ((recipe (melpulls--recipe)))
+    (list (intern (plist-get recipe :package))
+          :source "MELPA Pulls"
+          :date (ignore-errors (date-to-time (alist-get 'created_at pull)))
+          :description
+          (let ((description (or (melpulls--item-description pull) "n/a"))
+                (issue (alist-get 'issue_url pull)))
+            (concat (when issue
+                      (setq issue (replace-regexp-in-string "api" "www" issue))
+                      (setq issue (replace-regexp-in-string "repos/" "" issue))
+                      (melpulls--buttonize (file-name-base issue) #'browse-url issue issue))
+                    (when issue " ")
+                    (melpulls--md-links-to-buttons description)))
+          :url (melpulls--item-url recipe pull)
+          :recipe recipe)))
 
 (defun melpulls--recipes (pulls)
   "Asynchronously parse recipes from PULLS JSON."
