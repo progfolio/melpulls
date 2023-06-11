@@ -40,7 +40,7 @@
   :group 'elpaca
   :prefix "melpulls")
 
-(defcustom melpulls-cache-file (expand-file-name "cache/melpulls.eld" elpaca-directory)
+(defcustom melpulls-cache-file (expand-file-name "melpulls.eld" elpaca-cache-directory)
   "Name of the melpulls cache file."
   :type 'path)
 
