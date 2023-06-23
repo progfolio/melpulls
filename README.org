@@ -8,8 +8,9 @@ This makes it easy for Elpaca users to view, install, and contribute to those pa
 
 #+begin_src emacs-lisp :lexical t
 (elpaca-queue (elpaca '(melpulls :host github :repo "progfolio/melpulls")
-                      (add-to-list elpaca-menu-functions #'melpulls)))
+                      (add-to-list 'elpaca-menu-functions #'melpulls)))
 #+end_src
+
 
 * Usage
 After installing, the =elpaca-manager= command should list MELPA pull requests under the source "MELPA pulls".
