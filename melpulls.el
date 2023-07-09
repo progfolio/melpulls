@@ -170,10 +170,10 @@
 If REFRESH is non-nil, recompute the cache."
   (or (and (not refresh) melpulls--cache)
       (prog2
-          (message "Updating Melpulls menu.")
+          (message "Updating Melpulls menu...")
           (setq melpulls--cache (melpulls--recipes (melpulls--json)))
         (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
-        (message "Melpulls menu updated."))))
+        (message "Updating Melpulls menu...100%%"))))
 
 ;;;###autoload
 (defun melpulls (request)
