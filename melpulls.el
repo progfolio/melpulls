@@ -165,21 +165,17 @@
                         (sleep-for 0.001)))
                     (nreverse (delq nil completed)))))
 
-(defun melpulls--items (&optional refresh)
-  "Return list of menu items.
-If REFRESH is non-nil, recompute the cache."
-  (or (and (not refresh) melpulls--cache)
-      (prog2
-          (message "Updating Melpulls menu...")
-          (setq melpulls--cache (melpulls--recipes (melpulls--json)))
-        (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
-        (message "Updating Melpulls menu...100%%"))))
-
 ;;;###autoload
-(defun melpulls (request)
+(defun melpulls (request &optional item)
   "Menu function which provides MELPA pull request recipes.
-Supports `index` and `update` REQUEST."
-  (melpulls--items (eq request 'update)))
+Supports `index` and `update` ITEM REQUESTs."
+  (let ((cache (if (or (eq request 'update) (null melpulls--cache))
+                   (prog2
+                       (message "Updating Melpulls menu...")
+                       (setq melpulls--cache (melpulls--recipes (melpulls--json)))
+                     (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
+                     (message "Updating Melpulls menu...100%%")))))
+    (if item (elpaca-alist-get item cache) cache)))
 
 (provide 'melpulls)
 ;;; melpulls.el ends here
