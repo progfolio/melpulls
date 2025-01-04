@@ -174,7 +174,8 @@ Supports `index` and `update` ITEM REQUESTs."
                        (message "Updating Melpulls menu...")
                        (setq melpulls--cache (melpulls--recipes (melpulls--json)))
                      (elpaca--write-file melpulls-cache-file (prin1 melpulls--cache))
-                     (message "Updating Melpulls menu...100%%")))))
+                     (message "Updating Melpulls menu...100%%"))
+                 melpulls--cache)))
     (if item (elpaca-alist-get item cache) cache)))
 
 (provide 'melpulls)
