@@ -1,6 +1,6 @@
 ;;; melpulls.el --- Elpaca Menu for outstanding MELPA pull requests  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2022-2025  Nicholas Vollmer
+;; Copyright (C) 2022-2026  Nicholas Vollmer
 
 ;; Author:  Nicholas Vollmer
 ;; URL: https://github.com/progfolio/melpulls
